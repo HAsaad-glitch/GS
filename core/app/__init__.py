@@ -4,7 +4,7 @@ from flask_appbuilder import AppBuilder, SQLA
 from flask_migrate import Migrate
 from flask_cors import CORS
 
-from core.app.config import ACCEPTED_ORIGINS
+from GS.core.app.config import ACCEPTED_ORIGINS
 
 """
  Logging configuration
@@ -21,12 +21,12 @@ appbuilder = AppBuilder(app, db.session)
 
 migrate = Migrate(app, db)
 
-from core.app.apis import *
+from GS.core.app.apis import *
 
-from core.app.apis.example_api import ExampleApi
-from core.app.models.example_model import ExampleModel
+from GS.core.app.apis.example_api import ExampleApi
+from GS.core.app.models.example_model import ExampleModel
 
-from core.app.models import *
+from GS.core.app.models import *
 
 
 
