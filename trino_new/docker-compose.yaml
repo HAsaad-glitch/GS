@@ -1,0 +1,203 @@
+version: "3"
+
+x-common-environment: &common-environment
+  AWS_ACCESS_KEY_ID: admin
+  AWS_SECRET_ACCESS_KEY: password
+  AWS_REGION: us-east-1
+
+services:
+  trino:
+    image: trinodb/trino:440
+    container_name: trino
+    networks:
+      iceberg_net:
+    ports:
+      - 9080:8080
+      - 9443:8443
+    depends_on:
+      - rest
+    volumes:
+      - ./trino/catalog/:/etc/trino/catalog/
+      - ./trino/config.properties:/etc/trino/config.properties
+      - ./trino/opa.properties:/etc/trino/opa.properties
+      - ./trino/password-authenticator.properties:/etc/trino/password-authenticator.properties
+      - ./trino/group-provider.properties:/etc/trino/group-provider.properties
+      - ./trino/access-control.properties:/etc/trino/access-control.properties
+      - ./trino/rules.json:/etc/trino/rules.json
+      - ./trino/server.jks:/etc/trino/server.jks
+      - ./trino/ldap-cert.pem:/etc/trino/ldap-cert.pem
+      - ./trino/password.db:/etc/trino/password.db
+      - ./trino/test-schema.sql:/home/trino/test-schema.sql
+      - ./trino/plugin/:/etc/trino/plugin/
+      - ./trino/plugin/trino-group-provider-ldap-ad-1.0/:/usr/lib/trino/plugin/ldap-ad/
+    environment:
+      <<: *common-environment
+
+  rest:
+    image: tabulario/iceberg-rest
+    container_name: iceberg-rest
+    networks:
+      iceberg_net:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 8282:8282
+    environment:
+      <<: *common-environment
+      CATALOG_URI: jdbc:postgresql://postgres/demo_catalog
+      CATALOG_JDBC_USER: admin
+      CATALOG_JDBC_PASSWORD: password
+      CATALOG_NAME: iceberg
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: demo_catalog
+    networks:
+      iceberg_net:
+    ports:
+      - 5431:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - C:\Users\SoftLaptop\Desktop\GS\GS\trino_new\data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d demo_catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: "redis:alpine"
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      iceberg_net:
+    volumes:
+      - redis:/data
+
+  chroma-db:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma-data:/chroma/data
+    ports:
+      - "8000:8000"
+    environment:
+      - ALLOW_RESET=true
+    networks:
+      iceberg_net:
+
+  openldap:
+    image: osixia/openldap:latest
+    container_name: openldap
+    volumes:
+      - ./storage/ldap_db:/var/lib/ldap
+      - ./storage/ldap_config:/etc/ldap/slapd.d
+    environment:
+      - LDAP_ORGANISATION=gs
+      - LDAP_DOMAIN=gs.org
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_CONFIG_PASSWORD=config
+      - LDAP_RFC2307BIS_SCHEMA=true
+      - LDAP_REMOVE_CONFIG_AFTER_SETUP=true
+      - LDAP_TLS_VERIFY_CLIENT=try
+    networks:
+      - iceberg_net
+    ports:
+      - "389:389"
+      - "636:636"
+
+  openldap-ui:
+    image: wheelybird/ldap-user-manager:latest
+    container_name: openldap-ui
+    environment:
+      - LDAP_URI=ldap://openldap
+      - LDAP_BASE_DN=dc=gs,dc=org
+      - LDAP_REQUIRE_STARTTLS=FALSE
+      - LDAP_ADMINS_GROUP=admins
+      - LDAP_ADMIN_BIND_DN=cn=admin,dc=gs,dc=org
+      - LDAP_ADMIN_BIND_PWD=admin
+      - LDAP_IGNORE_CERT_ERRORS=true
+      - NO_HTTPS=TRUE
+      - PASSWORD_HASH=SSHA
+      - SERVER_HOSTNAME=localhost:18080
+    depends_on:
+      - openldap
+    ports:
+      - 18080:80
+    networks:
+      - iceberg_net
+
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: opa
+    ports:
+      - 8181:8181
+    command:
+      - run
+      - --server
+      - /policies
+      - --log-level
+      - debug
+    volumes:
+      - ./good_sell/trino.rego:/policies/trino.rego
+      - ./good_sell/masking.rego:/policies/masking.rego
+      - ./good_sell/:/policies/
+    networks:
+      - iceberg_net
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - 16686:16686
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - iceberg_net
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: temporal
+    depends_on:
+      - postgres
+    ports:
+      - "7233:7233"
+    networks:
+      - iceberg_net
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=admin
+      - POSTGRES_PWD=password
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+    volumes:
+      - temporal_data:/var/lib/temporal
+      - ./temporal/config/dynamicconfig:/etc/temporal/config/dynamicconfig
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: temporal-ui
+    ports:
+      - "8088:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+    networks:
+      - iceberg_net
+
+networks:
+  iceberg_net:
+
+volumes:
+  postgres_data:
+  redis:
+  chroma-data:
+  temporal_data:

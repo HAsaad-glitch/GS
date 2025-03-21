@@ -21,17 +21,9 @@ appbuilder = AppBuilder(app, db.session)
 
 migrate = Migrate(app, db)
 
-from GS.core.app.apis import *
-
-from GS.core.app.apis.example_api import ExampleApi
-from GS.core.app.models.example_model import ExampleModel
-
-from GS.core.app.models import *
 
 
 
-
-appbuilder.add_api(ExampleApi)
 
 
 

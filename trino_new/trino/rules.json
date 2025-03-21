@@ -1,0 +1,46 @@
+{
+  "catalogs": [
+
+    {
+      "catalog": "datahub_test",
+      "allow": "all"
+    }
+  ],
+  "schemas": [
+    {
+      "user": "hosam-asaad",
+      "schema": ".*",
+      "owner": true
+    },
+    {
+      "user": "admin",
+      "schema": ".*",
+      "owner": true
+    },
+    {
+      "schema": "public",
+      "owner": true
+    }
+  ],
+  "tables": [
+    {
+      "user": "hosam-asaad",
+      "privileges": ["SELECT"]
+    },
+    {
+      "schema": "public",
+      "table": "employees",
+      "privileges": ["SELECT"],
+      "columns" : [
+         {
+            "name": "title",
+            "mask":  "'*********'",
+            "mask_environment": {
+              "user": "hosam-asaad"
+            }
+         }
+      ]
+    }
+  ]
+
+}
