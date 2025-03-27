@@ -1,0 +1,18 @@
+data_analysis_task:
+  description: "Analyze the provided data to identify key trends, patterns, and insights"
+  expected_output: "A comprehensive analysis report including trends, patterns, anomalies, and actionable insights"
+  agent: "data_analyzer"
+  human_input: false
+  
+research_task:
+  description: "Research the specified topic and gather relevant information"
+  expected_output: "Detailed research findings with proper citations and sources"
+  agent: "researcher"
+  human_input: false
+  
+report_generation_task:
+  description: "Create a professional report based on the analysis and research findings"
+  expected_output: "A well-structured, comprehensive report that communicates the findings clearly"
+  agent: "report_writer"
+  human_input: false
+  context: ["data_analysis_task", "research_task"] 

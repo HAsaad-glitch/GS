@@ -6,7 +6,7 @@ flask db migrate
 
 flask db upgrade
 
-Below is a **condensed plan** that combines the essential components of a flexible scraping system into a smaller set of “agents” (or modules)—with **Temporal** orchestrating the entire flow.:
+Below is a **condensed plan** that combines the essential components of a flexible scraping system into a smaller set of "agents" (or modules)—with **Temporal** orchestrating the entire flow.:
 
 ---
 
@@ -25,13 +25,13 @@ The idea is to let **Temporal** handle:
 - Retries, error handling, backoff  
 - Branching logic (simple vs. complex site flows)
 
-Each “agent” can be deployed as a microservice or as modular code within a single service—whatever best fits your environment.
+Each "agent" can be deployed as a microservice or as modular code within a single service—whatever best fits your environment.
 
 ---
 
 ## Agent A: Orchestration & Workflow (Temporal)
 
-**Role**: This is the “nerve center.” It coordinates **all** activities:
+**Role**: This is the "nerve center." It coordinates **all** activities:
 1. **Invoke website analysis** to decide if a site is simple or complex.
 2. **Choose** between simple scraping flow or complex (login, captcha, IP rotation).
 3. **Parallelize** or sequence tasks (downloading pages, processing data, etc.).
@@ -53,7 +53,7 @@ Each “agent” can be deployed as a microservice or as modular code within a s
    - Captcha presence  
    - Rate limits / IP bans  
    - HTML vs. JavaScript-heavy pages
-2. **Output** a “complexity level” plus any special instructions (e.g., “login first,” “use captcha solver”).
+2. **Output** a "complexity level" plus any special instructions (e.g., "login first," "use captcha solver").
 
 **Implementation Detail**:
 - This can be an **Activity** in the Temporal workflow, returning a structured result like:
@@ -74,7 +74,7 @@ Each “agent” can be deployed as a microservice or as modular code within a s
 1. **Maintain a pool of proxies** (residential, datacenter, mobile).
 2. **Rotate proxies** on each request or after a certain threshold of requests/time.
 3. **Monitor error codes** (403, 429, captchas) and automatically switch to new IPs if bans or rate limits occur.
-4. **Integration with Orchestrator**: The Orchestrator can call “getProxy” from this agent each time it needs to fetch a page.
+4. **Integration with Orchestrator**: The Orchestrator can call "getProxy" from this agent each time it needs to fetch a page.
 
 **Implementation Detail**:
 - Could be a **microservice** or library.  
@@ -90,14 +90,14 @@ Each “agent” can be deployed as a microservice or as modular code within a s
 
 **Role**: Actually performs the page requests and (if needed) interacts with forms or headless browsers.  
 1. **Handles login flows**: Use stored credentials or cookies.
-2. **Solves captchas** (either via a third-party API or an internal AI model) if “captchaLikely” is detected.
+2. **Solves captchas** (either via a third-party API or an internal AI model) if "captchaLikely" is detected.
 3. **Fetches pages** from the site using the selected proxy/IP.
 4. **Returns raw HTML**, JSON, or screenshot data to the Orchestrator.
 
 **Implementation Detail**:
 - If site is simple: it just does a normal HTTP GET (with or without headless).  
 - If site is complex: it launches a headless browser (Puppeteer, Playwright, etc.) to simulate real user actions and solve interactive challenges.  
-- Each “fetch page” call can be an **Activity** invoked by the Temporal workflow:
+- Each "fetch page" call can be an **Activity** invoked by the Temporal workflow:
   ```python
   def fetch_page(url: str, proxy: str, login_session: Optional[str]) -> str:
       # returns raw HTML
@@ -109,7 +109,7 @@ Each “agent” can be deployed as a microservice or as modular code within a s
 
 **Role**: Turns raw data into structured text, optionally runs an LLM to parse or summarize.  
 1. **Convert** HTML/PDF/images to clean text or structured data (pull out relevant elements).
-2. **LLM Summaries**: If needed, call a summarization/extraction prompt. For example, “Given this raw text, extract product details (price, name, etc.) and generate a summary.”
+2. **LLM Summaries**: If needed, call a summarization/extraction prompt. For example, "Given this raw text, extract product details (price, name, etc.) and generate a summary."
 3. **Return** the processed/summarized output to the Orchestrator.
 
 **Implementation Detail**:
@@ -123,7 +123,7 @@ Each “agent” can be deployed as a microservice or as modular code within a s
 ## Agent F: Validation, DB Ingestion & Monitoring
 
 **Role**: Final checks, storing data, and system health.  
-1. **Validate** the structured data (check if it’s non-empty, matches expected schema, etc.).
+1. **Validate** the structured data (check if it's non-empty, matches expected schema, etc.).
 2. **Store** data in the database:
    - Could be a SQL DB, NoSQL, or data lake depending on your needs.
 3. **Monitoring & Anomaly Detection**:
@@ -138,7 +138,7 @@ Each “agent” can be deployed as a microservice or as modular code within a s
       # if ok, insert into DB
       # if not ok, raise exception or signal for a human review
   ```
-- **Monitoring** can be partially handled by Temporal’s built-in metrics/logging and partially by external tools (e.g. Prometheus, Datadog, custom dashboards).
+- **Monitoring** can be partially handled by Temporal's built-in metrics/logging and partially by external tools (e.g. Prometheus, Datadog, custom dashboards).
 
 ---
 
@@ -186,22 +186,75 @@ flowchart TB
 
 1. **User or Cron** triggers `ScrapeOrchestrationWorkflow`.
 2. **Website Analysis** (Agent B) determines if advanced measures (captcha solving, logins, or proxies) are needed.
-3. **Temporal** then orchestrates the actual scraping path—“SimpleScrape” or “ComplexScrape.”
-4. **Proxy Management** (Agent C) is called only when needed—especially if the site is flagged “complex.”
+3. **Temporal** then orchestrates the actual scraping path—"SimpleScrape" or "ComplexScrape."
+4. **Proxy Management** (Agent C) is called only when needed—especially if the site is flagged "complex."
 5. **Scraping Worker** (Agent D) returns raw data, handling captchas/logins as necessary.
 6. **Data Processing & Summarization** (Agent E) cleans, parses, or runs LLM-based extraction.
 7. **Validation & Storage** (Agent F) ensures data is correct and commits it to your DB. Monitoring hooks track metrics the whole time.
 
-**Result**: You have a single pipeline that accommodates both extremely _simple_ and extremely _complicated_ sites, thanks to the decision logic and orchestration in **Temporal**. If you don’t need a particular step for a given site, you skip it—while more advanced sites follow the full path with captive workflows for captcha solving, login sessions, and IP rotation.
+**Result**: You have a single pipeline that accommodates both extremely _simple_ and extremely _complicated_ sites, thanks to the decision logic and orchestration in **Temporal**. If you don't need a particular step for a given site, you skip it—while more advanced sites follow the full path with captive workflows for captcha solving, login sessions, and IP rotation.
 
 ---
 
 ## Key Benefits
 
 - **Modular & Extensible**: You can add or remove Agents as needs change (e.g., if you suddenly need advanced captcha solutions).
-- **Scalable**: Temporal handles concurrency, so you can run many scraping workflows in parallel without losing track of each site’s progress.
-- **Fail-Safe**: Automatic retries with different proxies or credentials reduce the chance of “getting stuck.”
-- **Unified Monitoring**: You can see in one place how each step performs, thanks to Temporal’s workflow history/logs plus your custom analytics.
+- **Scalable**: Temporal handles concurrency, so you can run many scraping workflows in parallel without losing track of each site's progress.
+- **Fail-Safe**: Automatic retries with different proxies or credentials reduce the chance of "getting stuck."
+- **Unified Monitoring**: You can see in one place how each step performs, thanks to Temporal's workflow history/logs plus your custom analytics.
 
 ---
+
+# CrewAI Integration
+
+This project now includes an integration with CrewAI to provide a flexible orchestration of autonomous AI agents for web scraping and data processing tasks.
+
+## CrewAI Overview
+
+CrewAI is a framework for orchestrating role-playing autonomous AI agents that can work together to accomplish tasks. In this project, we've implemented a scraping workflow using CrewAI with three specialized agents:
+
+1. **Website Analysis Agent**: Analyzes websites to determine their structure, complexity, and the best scraping approach
+2. **Scraping Agent**: Extracts data from websites based on the analysis results
+3. **Data Processing Agent**: Cleans, structures, and enhances the scraped data
+
+## Using CrewAI for Web Scraping
+
+You can use the CrewAI integration through the command-line interface:
+
+```bash
+# On Windows
+python GS\scrape.py --url https://example.com --output results.txt
+
+# On Linux/Mac
+python GS/scrape.py --url https://example.com --output results.txt
+```
+
+Or through the Python API:
+
+```python
+from workflow_engine.scraping_workflow import run_scraping_workflow
+
+result = run_scraping_workflow(
+    url="https://example.com",
+    output_file="results.txt"
+)
+```
+
+## CrewAI vs. Temporal
+
+While Temporal provides robust workflow orchestration with strong state management and error handling, CrewAI offers a more flexible AI-driven approach that can adapt to different challenges without explicit programming.
+
+**Temporal** is ideal for:
+- Well-defined workflows with predictable steps
+- Production systems requiring strong reliability and observability
+- Complex orchestration needs with detailed retry and error handling
+
+**CrewAI** is ideal for:
+- Workflows requiring adaptive reasoning and problem-solving
+- Tasks that benefit from LLM capabilities like natural language understanding
+- Rapid prototyping and experimentation with different approaches
+
+In this project, both approaches are available, allowing you to choose the best tool for your specific use case.
+
+For more detailed information about the CrewAI integration, see the [CrewAI README](workflow_engine/crew_agents/README.md).
 

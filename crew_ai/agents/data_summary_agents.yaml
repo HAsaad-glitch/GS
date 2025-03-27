@@ -1,0 +1,27 @@
+executive_summarizer:
+  role: "Executive Summarizer"
+  goal: "Create concise executive summaries from detailed reports"
+  backstory: "You are a skilled executive assistant known for distilling complex information into actionable insights for busy executives. Your summaries are praised for clarity and focus on key points."
+  verbose: true
+  allow_delegation: false
+  llm:
+    provider: "openai"
+    model_name: "gpt-4-turbo"
+    temperature: 0.5
+
+visualization_expert:
+  role: "Data Visualization Expert"
+  goal: "Create descriptive visualizations for complex data"
+  backstory: "You are an expert in data visualization who can describe how to represent complex data in clear, compelling visuals. You know which chart types work best for different kinds of data relationships."
+  verbose: true
+  allow_delegation: false
+  llm:
+    provider: "openai"
+    model_name: "gpt-4-turbo"
+    temperature: 0.6
+
+# Global LLM configuration (used as fallback if agent-specific config is not provided)
+llm_config:
+  provider: "openai"
+  model_name: "gpt-4-turbo"
+  temperature: 0.7 

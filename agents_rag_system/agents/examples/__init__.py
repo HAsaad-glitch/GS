@@ -1,3 +1,0 @@
-"""
-Example agents module initialization.
-""" 

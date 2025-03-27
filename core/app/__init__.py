@@ -5,6 +5,7 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 
 from GS.core.app.config import ACCEPTED_ORIGINS
+from GS.core.app.models.task_result import TaskResult
 
 """
  Logging configuration
@@ -21,12 +22,8 @@ appbuilder = AppBuilder(app, db.session)
 
 migrate = Migrate(app, db)
 
-
-
-
-
-
-
-
+# Import APIs after db is initialized
+from GS.core.app.apis.crewai_api import CrewAIApi
+appbuilder.add_api(CrewAIApi)
 
 db.create_all()

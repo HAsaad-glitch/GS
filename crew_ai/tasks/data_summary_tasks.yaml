@@ -1,0 +1,12 @@
+create_executive_summary:
+  description: "Create a concise executive summary of the detailed analysis report"
+  expected_output: "A one-page executive summary highlighting key insights and recommendations"
+  agent: "executive_summarizer"
+  human_input: false
+  
+suggest_visualizations:
+  description: "Suggest appropriate data visualizations to illustrate the key findings"
+  expected_output: "A list of recommended visualizations with descriptions"
+  agent: "visualization_expert"
+  human_input: false
+  context: ["create_executive_summary"] 
